@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-let mongoMemoryServer = null;
+// let mongoMemoryServer = null;
 
 const autoSeedIfEmpty = async () => {
   const User = require('../models/User');
@@ -159,33 +159,28 @@ const autoSeedIfEmpty = async () => {
 };
 
 const connectDB = async () => {
-  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/eventiq';
-  
-  try {
-    const conn = await mongoose.connect(uri, { serverSelectionTimeoutMS: 2000 });
-    console.log(`[MongoDB] Connected to local MongoDB daemon: ${conn.connection.host}`);
-  } catch (error) {
-    console.warn(`[MongoDB Warning]: Local MongoDB daemon not detected at 127.0.0.1:27017 (${error.message}).`);
-    console.log('[MongoDB Engine]: Initializing embedded MongoMemoryServer for standalone execution...');
-    
-    try {
-      await mongoose.disconnect();
-      const { MongoMemoryServer } = require('mongodb-memory-server');
-      mongoMemoryServer = await MongoMemoryServer.create();
-      const memoryUri = mongoMemoryServer.getUri();
-      
-      const conn = await mongoose.connect(memoryUri);
-      console.log(`[MongoDB Engine] Embedded MongoMemoryServer active at: ${conn.connection.host}`);
-    } catch (memError) {
-      console.error('[MongoDB Critical Error]: Failed starting embedded MongoMemoryServer:', memError.message);
-      return;
-    }
+  const uri = process.env.MONGO_URI;
+
+  if (!uri) {
+    console.error('[MongoDB] MONGO_URI is not defined.');
+    process.exit(1);
   }
 
   try {
+    const conn = await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 10000,
+    });
+
+    console.log(
+      `[MongoDB] Connected successfully to MongoDB Atlas: ${conn.connection.host}`
+    );
+
     await autoSeedIfEmpty();
-  } catch (seedErr) {
-    console.error('[AutoSeed Error]:', seedErr.message);
+
+  } catch (error) {
+    console.error('[MongoDB] Atlas connection failed.');
+    console.error('[MongoDB] Error:', error.message);
+    process.exit(1);
   }
 };
 
